@@ -6,6 +6,8 @@ from PyQt6.QtCore import Qt, QSize, QMimeData, QBuffer, QByteArray, QUrl
 import sys
 import time
 import os
+import win32clipboard
+import win32com.client
 
 # Set the path for the favicon icon
 FAVICON_PATH = os.path.abspath("favicon.ico")
@@ -246,8 +248,36 @@ class ClipboardHistoryApp(QMainWindow):
 
         self.clipboard_history = []
 
+        # Load existing Windows Clipboard History
+        self.load_windows_clipboard_history()
+
         # Connect to clipboard dataChanged signal for immediate updates
         QApplication.clipboard().dataChanged.connect(self.check_clipboard)
+
+    def load_windows_clipboard_history(self):
+        try:
+            win32clipboard.OpenClipboard()
+            formats = []
+            current_format = win32clipboard.EnumClipboardFormats(0)
+            while current_format:
+                formats.append(current_format)
+                current_format = win32clipboard.EnumClipboardFormats(current_format)
+            
+            for format in formats:
+                try:
+                    data = win32clipboard.GetClipboardData(format)
+                    if isinstance(data, str):
+                        item = ClipboardHistoryItem(data, "text", time.time())
+                        self.clipboard_history.append(item)
+                        self.add_item_to_list(item)
+                    elif isinstance(data, bytes):
+                        item = ClipboardHistoryItem(data, "image", time.time())
+                        self.clipboard_history.append(item)
+                        self.add_item_to_list(item)
+                except:
+                    pass  # Skip formats that can't be processed
+        finally:
+            win32clipboard.CloseClipboard()
 
     def check_clipboard(self):
         try:
@@ -318,6 +348,11 @@ class ClipboardHistoryApp(QMainWindow):
         self.history_list.setCurrentItem(list_item)  # Select the newly added item
 
     def clear_history(self):
+        # Clear Windows Clipboard History
+        shell = win32com.client.Dispatch("Shell.Application")
+        shell.Namespace(10).Self.InvokeVerb("clear")
+
+        # Clear our local history
         self.clipboard_history.clear()
         self.history_list.clear()
         self.status_label.setText("History cleared")
@@ -329,7 +364,7 @@ class ClipboardHistoryApp(QMainWindow):
             
             clipboard = QApplication.clipboard()
             mime_data = QMimeData()
-            if item.content_type == "text":
+            if item.content_type ==   "text":
                 mime_data.setHtml(item.content)
                 doc = QTextDocument()
                 doc.setHtml(item.content)
@@ -345,6 +380,26 @@ class ClipboardHistoryApp(QMainWindow):
         if selected_items:
             index = self.history_list.row(selected_items[0])
             item = self.history_list.item(index).data(Qt.ItemDataRole.UserRole)
+            
+            # Remove item from Windows Clipboard History
+            win32clipboard.OpenClipboard()
+            try:
+                formats = []
+                current_format = win32clipboard.EnumClipboardFormats(0)
+                while current_format:
+                    formats.append(current_format)
+                    current_format = win32clipboard.EnumClipboardFormats(current_format)
+                
+                for format in formats:
+                    data = win32clipboard.GetClipboardData(format)
+                    if (item.content_type == "text" and isinstance(data, str) and data == item.content) or \
+                       (item.content_type == "image" and isinstance(data, bytes) and data == item.content):
+                        win32clipboard.EmptyClipboard()
+                        break
+            finally:
+                win32clipboard.CloseClipboard()
+            
+            # Remove item from our local history
             self.clipboard_history.remove(item)
             self.history_list.takeItem(index)
             self.status_label.setText("Item deleted from history")
@@ -355,17 +410,24 @@ class ClipboardHistoryApp(QMainWindow):
         dialog = ItemEditDialog(item, self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             edited_content = dialog.get_edited_content()
+            
+            # Update the item in our local history
             item.content = edited_content
             item.content_type = "text"  # Treat all edited content as text (HTML)
             item.timestamp = time.time()  # Update the timestamp
 
-            # Remove the item from its current position
-            
-            self.clipboard_history.remove(item)
+            # Update the item in the Windows Clipboard History
+            win32clipboard.OpenClipboard()
+            try:
+                win32clipboard.EmptyClipboard()
+                win32clipboard.SetClipboardText(edited_content, win32clipboard.CF_UNICODETEXT)
+            finally:
+                win32clipboard.CloseClipboard()
+
+            # Remove the item from its current position in the list widget
             self.history_list.takeItem(self.history_list.row(list_item))
 
             # Add the edited item to the top of the list
-            self.clipboard_history.append(item)
             self.add_item_to_list(item)
 
             # Set the edited content as the current clipboard content
@@ -377,7 +439,7 @@ class ClipboardHistoryApp(QMainWindow):
             mime_data.setText(doc.toPlainText())
             clipboard.setMimeData(mime_data)
             
-            self.status_label.setText("Item edited successfully, moved to top, and set as current clipboard content")
+            self.status_label.setText("Item edited successfully, updated in Windows Clipboard History, moved to top, and set as current clipboard content")
 
 def exception_hook(exctype, value, traceback):
     print(f"An exception occurred: {exctype.__name__}: {value}")
@@ -387,6 +449,8 @@ sys.excepthook = exception_hook
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon(FAVICON_PATH))  # Set application-wide icon
     window = ClipboardHistoryApp()
     window.show()
+    print("Application window should be visible now.")
     sys.exit(app.exec())

@@ -10,6 +10,24 @@
 - **Item Management**: Clear history, copy, delete, or rearrange items for easy access.
 - **Dark Theme UI**: A clean, modern interface with a dark theme for comfortable viewing.
 
+## Important Points to Note
+
+### Security and Privacy
+
+1. **Local Access Only**:
+   - This application operates entirely on your local system and does not connect to the internet. All clipboard data and history are stored and managed locally, ensuring that no information is shared externally.
+
+2. **Access to Windows Clipboard History**:
+   - The application uses the Windows clipboard to retrieve, store, and manage text and images that you copy. This allows you to organize your clipboard history effectively. However, any content copied to the clipboard, including sensitive information, will be added to the application's local history until you clear it.
+   - **Recommendation**: If you’re working with confidential information, consider clearing the clipboard history within the app or avoiding copying sensitive data when the app is running.
+
+3. **Clipboard Item Management**:
+   - The app allows you to edit, delete, and clear clipboard items directly. Any modifications are strictly local and only affect the clipboard history on your device. Using the "Clear History" option will remove all items stored within the application.
+
+### Summary
+
+Clipboard History Manager is designed to enhance your clipboard management locally. Since it operates offline, you can use the application with confidence that your data remains secure and private on your device.
+
 ## Prerequisites
 
 1. **Python 3.7+**: Ensure Python is installed. [Download Python](https://www.python.org/downloads/)
