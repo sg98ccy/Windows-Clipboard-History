@@ -1,0 +1,22 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+clipboard-history/
+
+# Build artifacts and distribution directories
+build/
+dist/
+
+# pyinstaller generated spec files (optional)
+*.spec
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Logs and temporary files
+*.log
+*.tmp
+
+Screenshot Outputs/
